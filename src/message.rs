@@ -53,6 +53,10 @@ impl Message {
         self.id.write(id);
     }
 
+    pub fn data(&self) -> &[u8] {
+        self.body.as_ref()
+    }
+
     pub fn parse(mut bytes: BytesMut) -> Self {
         let id = MaybeUninit::new(bytes.get_u64());
         let timestamp = bytes.get_u64();

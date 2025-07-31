@@ -9,6 +9,7 @@ pub enum MessageEncodingError {
     UnexpectedIoError(#[from] std::io::Error),
 }
 
+#[derive(Debug)]
 pub struct MessageCodec {
     length_delimited_codec: LengthDelimitedCodec,
 }

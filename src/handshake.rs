@@ -30,6 +30,9 @@ pub enum HandshakeError {
 
     #[error("Unexpected IO error during handshake: {0}")]
     UnexpectedIoError(#[from] std::io::Error),
+
+    #[error("Error encountered during handshake")]
+    ServerError,
 }
 
 impl Handshake {
