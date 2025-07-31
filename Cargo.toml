@@ -1,0 +1,12 @@
+[package]
+name = "hotline"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bytes = "1.10.1"
+thiserror = "2.0.12"
+tokio = { version = "1.47.0", features = ["full"] }
+tokio-util = { version = "0.7.15", features = ["codec", "full"] }
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
