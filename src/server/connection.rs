@@ -1,0 +1,31 @@
+use futures::{SinkExt, StreamExt};
+use tokio::net::TcpStream;
+use tokio_util::codec::Framed;
+
+use crate::{
+    handshake::{ClientType, codec::HandshakeCodec},
+    message::codec::MessageCodec,
+    server::error::ServerError,
+};
+
+#[derive(Debug)]
+pub struct Connection {
+    pub(crate) client_type: ClientType,
+    pub(crate) transport: Framed<TcpStream, MessageCodec>,
+}
+
+impl Connection {
+    pub async fn initalize(tcp: TcpStream) -> Result<Self, ServerError> {
+        let mut transport = Framed::new(tcp, HandshakeCodec::new());
+        let handshake = transport
+            .next()
+            .await
+            .ok_or(ServerError::ConnectionError)??;
+        transport.send(handshake.clone()).await?;
+        let transport = Framed::new(transport.into_inner(), MessageCodec::new());
+        Ok(Self {
+            client_type: handshake.client_type,
+            transport,
+        })
+    }
+}

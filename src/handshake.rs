@@ -3,7 +3,7 @@ use thiserror::Error;
 
 pub mod codec;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ClientType {
     Producer,
     Consumer,
@@ -18,9 +18,9 @@ impl ClientType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Handshake {
-    client_type: ClientType,
+    pub client_type: ClientType,
 }
 
 #[derive(Debug, Error)]

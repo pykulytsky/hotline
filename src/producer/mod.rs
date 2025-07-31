@@ -4,7 +4,7 @@ use tokio::net::{TcpStream, ToSocketAddrs};
 use tokio_util::codec::Framed;
 
 use crate::{
-    handshake::{Handshake, HandshakeError, codec::HahdsakeCodec},
+    handshake::{Handshake, HandshakeError, codec::HandshakeCodec},
     message::{Message, codec::MessageCodec},
     producer::error::ProducerError,
 };
@@ -18,7 +18,7 @@ pub struct Producer {
 impl Producer {
     pub async fn connect<Addr: ToSocketAddrs>(addr: Addr) -> Result<Self, ProducerError> {
         let tcp = TcpStream::connect(addr).await?;
-        let mut transport = Framed::new(tcp, HahdsakeCodec::new());
+        let mut transport = Framed::new(tcp, HandshakeCodec::new());
         transport.send(Handshake::PRODUCER).await?;
         // TODO: add timeout
         transport
@@ -27,6 +27,10 @@ impl Producer {
             .ok_or(HandshakeError::ServerError)??;
         let transport = Framed::new(transport.into_inner(), MessageCodec::new());
         Ok(Self { transport })
+    }
+
+    pub(crate) fn new(transport: Framed<TcpStream, MessageCodec>) -> Self {
+        Self { transport }
     }
 
     pub async fn produce<B: Into<Bytes>>(&mut self, body: B) -> Result<(), ProducerError> {

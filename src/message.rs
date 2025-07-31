@@ -32,8 +32,8 @@ impl Message {
 
     pub fn as_bytes(&self) -> Bytes {
         let mut bytes = BytesMut::new();
-        // SAFETY: this is save since we initialize it with zeroed and therefore unitialized
-        // version should be equal to 0
+        // SAFETY: this is save since we initialize it with zeros and therefore unitialized
+        // version should be equal to 0.
         unsafe {
             bytes.put_u64(self.id.assume_init_read());
         }

@@ -2,11 +2,11 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use crate::handshake::{Handshake, HandshakeError};
 
-pub struct HahdsakeCodec {
+pub struct HandshakeCodec {
     length_delimited_codec: LengthDelimitedCodec,
 }
 
-impl HahdsakeCodec {
+impl HandshakeCodec {
     pub fn new() -> Self {
         Self {
             length_delimited_codec: LengthDelimitedCodec::new(),
@@ -14,7 +14,7 @@ impl HahdsakeCodec {
     }
 }
 
-impl Decoder for HahdsakeCodec {
+impl Decoder for HandshakeCodec {
     type Item = Handshake;
 
     type Error = HandshakeError;
@@ -28,7 +28,7 @@ impl Decoder for HahdsakeCodec {
     }
 }
 
-impl Encoder<Handshake> for HahdsakeCodec {
+impl Encoder<Handshake> for HandshakeCodec {
     type Error = HandshakeError;
 
     fn encode(&mut self, item: Handshake, dst: &mut bytes::BytesMut) -> Result<(), Self::Error> {

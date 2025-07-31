@@ -5,7 +5,7 @@ use tokio_util::codec::Framed;
 
 use crate::{
     consumer::error::ConsumerError,
-    handshake::{Handshake, HandshakeError, codec::HahdsakeCodec},
+    handshake::{Handshake, HandshakeError, codec::HandshakeCodec},
     message::codec::MessageCodec,
 };
 
@@ -20,7 +20,7 @@ pub struct Consumer {
 impl Consumer {
     pub async fn connect<Addr: ToSocketAddrs>(addr: Addr) -> Result<Self, ConsumerError> {
         let tcp = TcpStream::connect(addr).await?;
-        let mut transport = Framed::new(tcp, HahdsakeCodec::new());
+        let mut transport = Framed::new(tcp, HandshakeCodec::new());
         transport.send(Handshake::CONSUMER).await?;
         // TODO: add timeout
         transport
@@ -29,5 +29,9 @@ impl Consumer {
             .ok_or(HandshakeError::ServerError)??;
         let transport = Framed::new(transport.into_inner(), MessageCodec::new());
         Ok(Self { transport })
+    }
+
+    pub(crate) fn new(transport: Framed<TcpStream, MessageCodec>) -> Self {
+        Self { transport }
     }
 }
