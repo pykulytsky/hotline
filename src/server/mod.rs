@@ -46,13 +46,22 @@ impl Server {
     }
 
     pub async fn listen<Addr: ToSocketAddrs>(self, addr: Addr) -> Result<(), ServerError> {
+        let span = tracing::info_span!("server");
+        let _guard = span.enter();
         let listener = TcpListener::bind(addr).await?;
+        tracing::info!(
+            "Listening on {}",
+            listener.local_addr().unwrap().to_string()
+        );
         tokio::spawn(async move { self.bus.start().await });
 
         let mut new_queue_rx = self.new_queue_rx;
         let queue_channels = self.queue_channels.clone();
         tokio::spawn(async move {
+            let span = tracing::info_span!("new_queues");
+            let _guard = span.enter();
             while let Some((key, queue_rx)) = new_queue_rx.recv().await {
+                tracing::info!("Received request to create new queue {}", &key);
                 let (consumers_tx, consumers_rx) = unbounded_channel();
                 let queue = Queue::new(key.clone(), consumers_rx, queue_rx);
                 queue.start().await;
@@ -67,10 +76,13 @@ impl Server {
             let producers_tx = producers_tx.clone();
             let new_queue_tx = new_queue_tx.clone();
             match listener.accept().await {
-                Ok((tcp, _addr)) => {
+                Ok((tcp, addr)) => {
                     tokio::spawn(async move {
+                        let span = tracing::info_span!("connections");
+                        let _guard = span.enter();
                         let connection = Connection::initalize(tcp).await.unwrap();
                         if connection.is_consumer() {
+                            tracing::info!("New consumer connected {}", addr);
                             let key = "*".to_string();
                             loop {
                                 let mut queue_channels = queue_channels.write().await;
@@ -86,6 +98,7 @@ impl Server {
                                 }
                             }
                         } else {
+                            tracing::info!("New producer connected {}", addr);
                             producers_tx.send(connection).unwrap();
                         }
                     });

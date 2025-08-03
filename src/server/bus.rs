@@ -57,13 +57,20 @@ impl MessageBus {
     }
 
     pub async fn start(mut self) {
+        let span = tracing::info_span!("message_bus");
+        let _guard = span.enter();
+        tracing::info!("Starting message bus");
         let queues = self.queues.clone();
         let new_queue_tx = self.new_queue_tx.clone();
         tokio::spawn(async move {
+            let span = tracing::info_span!("new_queues");
+            let _guard = span.enter();
             while let Some(key) = self.new_queue_rx.recv().await {
+                tracing::info!("Registering new queue: {}", &key);
                 let (new_channel_tx, new_channel_rx) = unbounded_channel();
                 let mut queues = queues.write().await;
                 queues.insert(key.clone(), new_channel_tx.clone());
+                tracing::info!("Successfully registered new queue: {}", &key);
                 new_queue_tx
                     .send((key, new_channel_rx))
                     .map_err(|_| MessageBusError::FailedToCreateQueue)
@@ -72,14 +79,22 @@ impl MessageBus {
         });
 
         while let Some(mut producer) = self.producers_rx.recv().await {
+            let span = tracing::info_span!("producers");
+            let _guard = span.enter();
+            tracing::info!("Registered new producer");
             let queues = self.queues.clone();
             let new_queue_tx = self.new_queue_tx.clone();
             tokio::spawn(async move {
+                let span = tracing::info_span!("producer_messages");
+                let _guard = span.enter();
+                tracing::info!("Strated listening for messages from producer");
                 while let Some(Ok(msg)) = producer.transport.next().await {
+                    tracing::info!("Received message from producer");
                     let _ = process_producer_message(msg, &queues, &new_queue_tx).await;
                 }
             });
         }
+        tracing::info!("Message bus has successfully stopped");
     }
 }
 

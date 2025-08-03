@@ -51,6 +51,9 @@ impl Queue {
     }
 
     pub async fn start(self) {
+        let span = tracing::info_span!("queue", key = &self.key);
+        let _guard = span.enter();
+        tracing::info!("Started a queue");
         let last_consumer = Arc::new(AtomicUsize::new(0));
         let mut new_consumer = self.new_consumer;
         let mut new_message = self.new_message;
@@ -59,6 +62,7 @@ impl Queue {
         let queue = self._queue.clone();
         tokio::spawn(async move {
             while let Some(connection) = new_consumer.recv().await {
+                tracing::info!("Binding new consumer");
                 let (ack, message) = Consumer::from(connection).into_split();
                 consumers.write().await.push(message);
                 ack_handlers.write().await.push(ack);
@@ -91,7 +95,8 @@ impl Queue {
                     futures::future::select_all(ack_handlers),
                 )
                 .await;
-                if let Ok((Some(Ok(ack)), _idx, _)) = res {
+                if let Ok((Some(Ok(ack)), idx, _)) = res {
+                    tracing::info!("Received ack from consumer {}", idx);
                     let message_index = queue
                         .read()
                         .await
