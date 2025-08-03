@@ -28,4 +28,12 @@ impl Connection {
             transport,
         })
     }
+
+    pub fn is_producer(&self) -> bool {
+        self.client_type == ClientType::Producer
+    }
+
+    pub fn is_consumer(&self) -> bool {
+        self.client_type == ClientType::Consumer
+    }
 }

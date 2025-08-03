@@ -1,3 +1,6 @@
+use bytes::Buf;
+use std::mem::MaybeUninit;
+
 use thiserror::Error;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
@@ -7,6 +10,9 @@ use crate::message::Message;
 pub enum MessageEncodingError {
     #[error("Unexpected IO error: {0}")]
     UnexpectedIoError(#[from] std::io::Error),
+
+    #[error("Failed to parse data as string")]
+    StringParsingError(#[from] std::str::Utf8Error),
 }
 
 #[derive(Debug)]
@@ -20,6 +26,30 @@ impl MessageCodec {
             length_delimited_codec: LengthDelimitedCodec::new(),
         }
     }
+
+    pub fn decode(
+        &mut self,
+        src: &mut bytes::BytesMut,
+    ) -> Result<Option<Message>, MessageEncodingError> {
+        if let Some(mut frame) = self.length_delimited_codec.decode(src)? {
+            let id = MaybeUninit::new(frame.get_u64());
+            let timestamp = frame.get_u64();
+            let key = if let Some(key) = self.length_delimited_codec.decode(&mut frame)? {
+                std::str::from_utf8(key.as_ref())?.to_string()
+            } else {
+                return Ok(None);
+            };
+            let body = frame.freeze();
+            Ok(Some(Message {
+                id,
+                timestamp,
+                key,
+                body,
+            }))
+        } else {
+            return Ok(None);
+        }
+    }
 }
 
 impl Decoder for MessageCodec {
@@ -28,12 +58,7 @@ impl Decoder for MessageCodec {
     type Error = MessageEncodingError;
 
     fn decode(&mut self, src: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        if let Some(frame) = self.length_delimited_codec.decode(src)? {
-            let message = Message::parse(frame);
-            Ok(Some(message))
-        } else {
-            Ok(None)
-        }
+        self.decode(src)
     }
 }
 

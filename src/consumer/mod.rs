@@ -30,8 +30,4 @@ impl Consumer {
         let transport = Framed::new(transport.into_inner(), MessageCodec::new());
         Ok(Self { transport })
     }
-
-    pub(crate) fn new(transport: Framed<TcpStream, MessageCodec>) -> Self {
-        Self { transport }
-    }
 }

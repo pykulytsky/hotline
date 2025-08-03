@@ -1,6 +1,6 @@
 use std::mem::MaybeUninit;
 
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::time::get_current_timestamp;
 
@@ -8,20 +8,23 @@ pub mod codec;
 
 #[derive(Debug, Clone)]
 pub struct Message {
-    id: MaybeUninit<u64>,
-    timestamp: u64,
-    body: Bytes,
+    pub(crate) id: MaybeUninit<u64>,
+    pub(crate) timestamp: u64,
+    pub(crate) key: String,
+    pub(crate) body: Bytes,
 }
 
 impl Message {
     pub fn new<B: Into<Bytes>>(body: B) -> Self {
-        // Timestamp should be initialized by the event bus
+        // Timestamp should be initialized by the message bus
         let id = MaybeUninit::zeroed();
         let timestamp = get_current_timestamp();
+        let key = "*".to_string();
         let body = body.into();
         Self {
             id,
             timestamp,
+            key,
             body,
         }
     }
@@ -38,6 +41,8 @@ impl Message {
             bytes.put_u64(self.id.assume_init_read());
         }
         bytes.put_u64(self.timestamp);
+        bytes.put_u32(self.key.as_bytes().len() as u32);
+        bytes.put(self.key.as_bytes());
         bytes.put(self.body.clone());
 
         bytes.freeze()
@@ -55,16 +60,5 @@ impl Message {
 
     pub fn data(&self) -> &[u8] {
         self.body.as_ref()
-    }
-
-    pub fn parse(mut bytes: BytesMut) -> Self {
-        let id = MaybeUninit::new(bytes.get_u64());
-        let timestamp = bytes.get_u64();
-        let body = bytes.freeze();
-        Self {
-            id,
-            timestamp,
-            body,
-        }
     }
 }

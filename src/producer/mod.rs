@@ -29,10 +29,6 @@ impl Producer {
         Ok(Self { transport })
     }
 
-    pub(crate) fn new(transport: Framed<TcpStream, MessageCodec>) -> Self {
-        Self { transport }
-    }
-
     pub async fn produce<B: Into<Bytes>>(&mut self, body: B) -> Result<(), ProducerError> {
         Ok(self.transport.send(Message::new(body)).await?)
     }

@@ -3,7 +3,7 @@ use thiserror::Error;
 
 pub mod codec;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ClientType {
     Producer,
     Consumer,
