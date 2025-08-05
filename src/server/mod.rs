@@ -13,7 +13,7 @@ use crate::{
     server::{bus::MessageBus, connection::Connection, error::ServerError, queue::Queue},
 };
 
-mod ack;
+pub mod ack;
 mod bus;
 pub mod connection;
 mod consumer;

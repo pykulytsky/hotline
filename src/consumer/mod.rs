@@ -1,12 +1,19 @@
 use futures::SinkExt;
 use futures::StreamExt;
+use tokio::net::tcp::OwnedReadHalf;
+use tokio::net::tcp::OwnedWriteHalf;
 use tokio::net::{TcpStream, ToSocketAddrs};
 use tokio_util::codec::Framed;
+use tokio_util::codec::FramedRead;
+use tokio_util::codec::FramedWrite;
 
+use crate::message::Message;
+use crate::server::ack::Ack;
 use crate::{
     consumer::error::ConsumerError,
     handshake::{Handshake, HandshakeError, codec::HandshakeCodec},
     message::codec::MessageCodec,
+    server::ack::AckCodec,
 };
 
 pub mod error;
@@ -14,7 +21,8 @@ pub mod stream;
 
 #[derive(Debug)]
 pub struct Consumer {
-    transport: Framed<TcpStream, MessageCodec>,
+    read: FramedRead<OwnedReadHalf, MessageCodec>,
+    write: FramedWrite<OwnedWriteHalf, AckCodec>,
 }
 
 impl Consumer {
@@ -31,7 +39,16 @@ impl Consumer {
             .next()
             .await
             .ok_or(HandshakeError::ServerError)??;
-        let transport = Framed::new(transport.into_inner(), MessageCodec::new());
-        Ok(Self { transport })
+        let (read, write) = transport.into_inner().into_split();
+        let read = FramedRead::new(read, MessageCodec::new());
+        let write = FramedWrite::new(write, AckCodec::new());
+        Ok(Self { read, write })
+    }
+
+    pub async fn ack(&mut self, msg: &Message) -> Result<(), ConsumerError> {
+        unsafe {
+            self.write.send(Ack::new(msg.id.assume_init())).await?;
+        }
+        Ok(())
     }
 }

@@ -15,6 +15,6 @@ impl Stream for Consumer {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         let this = self.get_mut();
-        Pin::new(&mut this.transport).poll_next(cx)
+        Pin::new(&mut this.read).poll_next(cx)
     }
 }
