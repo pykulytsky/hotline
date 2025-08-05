@@ -10,7 +10,12 @@ async fn main() {
         print!("Enter a message: ");
         std::io::stdout().flush().unwrap();
         std::io::stdin().read_line(&mut buf).unwrap();
-        producer.produce(buf.clone()).await.unwrap();
+        let line = buf.clone();
+        let (key, msg) = line.split_once(" ").unwrap();
+        producer
+            .produce(msg.to_string(), key.to_string())
+            .await
+            .unwrap();
         buf.clear();
     }
 }

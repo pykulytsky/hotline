@@ -12,6 +12,7 @@ use crate::{
 pub struct Connection {
     pub(crate) client_type: ClientType,
     pub(crate) transport: Framed<TcpStream, MessageCodec>,
+    pub(crate) key: Option<String>,
 }
 
 impl Connection {
@@ -25,6 +26,7 @@ impl Connection {
         let transport = Framed::new(transport.into_inner(), MessageCodec::new());
         Ok(Self {
             client_type: handshake.client_type,
+            key: handshake.key,
             transport,
         })
     }

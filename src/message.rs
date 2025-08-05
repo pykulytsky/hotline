@@ -15,11 +15,11 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new<B: Into<Bytes>>(body: B) -> Self {
+    pub fn new<B: Into<Bytes>, Key: ToString>(body: B, key: Key) -> Self {
         // Timestamp should be initialized by the message bus
         let id = MaybeUninit::zeroed();
         let timestamp = get_current_timestamp();
-        let key = "*".to_string();
+        let key = key.to_string();
         let body = body.into();
         Self {
             id,

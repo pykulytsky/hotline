@@ -83,7 +83,7 @@ impl Server {
                         let connection = Connection::initalize(tcp).await.unwrap();
                         if connection.is_consumer() {
                             tracing::info!("New consumer connected {}", addr);
-                            let key = "*".to_string();
+                            let key = connection.key.clone().unwrap_or("*".to_string());
                             loop {
                                 let mut queue_channels = queue_channels.write().await;
                                 match queue_channels.get_mut(&key) {

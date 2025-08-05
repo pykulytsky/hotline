@@ -84,10 +84,10 @@ mod tests {
     async fn single_message() {
         let mut buffer = Vec::new();
         let mut transport = FramedWrite::new(&mut buffer, MessageCodec::new());
-        transport.send(Message::new("1")).await.unwrap();
-        transport.send(Message::new("test")).await.unwrap();
+        transport.send(Message::new("1", "")).await.unwrap();
+        transport.send(Message::new("test", "")).await.unwrap();
         transport
-            .send(Message::new([1, 2, 3].as_slice()))
+            .send(Message::new([1, 2, 3].as_slice(), ""))
             .await
             .unwrap();
         let mut client = FramedRead::new(buffer.as_slice(), MessageCodec::new());

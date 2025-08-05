@@ -18,10 +18,14 @@ pub struct Consumer {
 }
 
 impl Consumer {
-    pub async fn connect<Addr: ToSocketAddrs>(addr: Addr) -> Result<Self, ConsumerError> {
+    pub async fn connect<Addr: ToSocketAddrs, Key: ToString>(
+        addr: Addr,
+        key: Key,
+    ) -> Result<Self, ConsumerError> {
         let tcp = TcpStream::connect(addr).await?;
         let mut transport = Framed::new(tcp, HandshakeCodec::new());
-        transport.send(Handshake::CONSUMER).await?;
+        let consumer_handshake = Handshake::new_consumer(key);
+        transport.send(consumer_handshake).await?;
         // TODO: add timeout
         transport
             .next()

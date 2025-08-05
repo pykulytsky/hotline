@@ -29,7 +29,11 @@ impl Producer {
         Ok(Self { transport })
     }
 
-    pub async fn produce<B: Into<Bytes>>(&mut self, body: B) -> Result<(), ProducerError> {
-        Ok(self.transport.send(Message::new(body)).await?)
+    pub async fn produce<B: Into<Bytes>, Key: ToString>(
+        &mut self,
+        body: B,
+        key: Key,
+    ) -> Result<(), ProducerError> {
+        Ok(self.transport.send(Message::new(body, key)).await?)
     }
 }
