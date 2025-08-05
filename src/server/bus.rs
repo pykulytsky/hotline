@@ -6,6 +6,7 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
 };
 use thiserror::Error;
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::{
     RwLock,
@@ -29,8 +30,8 @@ pub enum MessageBusError {
     #[error("Failed to create a queue")]
     FailedToCreateQueue,
 
-    #[error("Failed to route a message to a queue {0}")]
-    FailedToRouteMessage(String),
+    #[error("Failed to send message to a queue {}", ._0.0.key)]
+    SendError(#[from] SendError<Message>),
 }
 
 #[derive(Debug)]
@@ -90,7 +91,9 @@ impl MessageBus {
                 tracing::info!("Strated listening for messages from producer");
                 while let Some(Ok(msg)) = producer.transport.next().await {
                     tracing::info!("Received message from producer");
-                    let _ = process_producer_message(msg, &queues, &new_queue_tx).await;
+                    for msg in msg.expand_key() {
+                        let _ = process_producer_message(msg, &queues, &new_queue_tx).await;
+                    }
                 }
             });
         }
@@ -105,6 +108,12 @@ async fn process_producer_message(
 ) -> Result<(), MessageBusError> {
     message.set_id(generate_id());
     let key = message.key.clone();
+    if key.as_str() == "*" {
+        for queue in queues.write().await.iter_mut() {
+            queue.1.send(message.clone())?;
+        }
+        return Ok(());
+    }
     let new_message = match queues.write().await.entry(key.clone()) {
         Occupied(existing_queue) => existing_queue.get().clone(),
         Vacant(new_queue) => {
@@ -116,7 +125,5 @@ async fn process_producer_message(
             new_channel_tx
         }
     };
-    new_message
-        .send(message.clone())
-        .map_err(|_| MessageBusError::FailedToRouteMessage(key))
+    Ok(new_message.send(message.clone())?)
 }

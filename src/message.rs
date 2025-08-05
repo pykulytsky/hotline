@@ -33,6 +33,14 @@ impl Message {
         self.as_bytes()
     }
 
+    pub(crate) fn expand_key(&self) -> impl Iterator<Item = Self> {
+        self.key.split('.').map(|key| {
+            let mut msg = self.clone();
+            msg.key = key.to_string();
+            msg
+        })
+    }
+
     pub fn as_bytes(&self) -> Bytes {
         let mut bytes = BytesMut::new();
         // SAFETY: this is save since we initialize it with zeros and therefore unitialized

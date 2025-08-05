@@ -53,7 +53,7 @@ impl Server {
             "Listening on {}",
             listener.local_addr().unwrap().to_string()
         );
-        tokio::spawn(async move { self.bus.start().await });
+        tokio::spawn(self.bus.start());
 
         let mut new_queue_rx = self.new_queue_rx;
         let queue_channels = self.queue_channels.clone();
