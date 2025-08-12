@@ -19,7 +19,6 @@ use crate::{
     },
 };
 
-#[allow(unused)]
 #[derive(Debug)]
 pub struct Queue {
     key: String,
@@ -71,41 +70,15 @@ impl Queue {
         let consumers = self.consumers.clone();
         tokio::spawn(async move {
             while let Some(message) = new_message.recv().await {
-                let last_consumer = last_consumer.clone();
-                queue.write().await.push_back(message.clone());
-                // TODO: distribute message to consumers
-                let mut consumers = consumers.write().await;
-                let consumer = select_consumer_round_robin(&mut consumers, last_consumer);
-                if let Some(consumer) = consumer {
-                    consumer.send(message).await.unwrap();
-                }
+                handle_new_message(message, last_consumer.clone(), &queue, &consumers).await;
             }
         });
+
         let ack_handlers = self.ack_handlers.clone();
         let queue = self._queue.clone();
         tokio::spawn(async move {
             loop {
-                let mut ack_handlers = ack_handlers.write().await;
-                if ack_handlers.is_empty() {
-                    continue;
-                }
-                let ack_handlers = ack_handlers.iter_mut().map(|ack| ack.next());
-                let res = tokio::time::timeout(
-                    Duration::from_millis(100),
-                    futures::future::select_all(ack_handlers),
-                )
-                .await;
-                if let Ok((Some(Ok(ack)), idx, _)) = res {
-                    tracing::info!("Received ack from consumer {}", idx);
-                    let message_index = queue
-                        .read()
-                        .await
-                        .iter()
-                        .position(|msg| msg.id() == ack.message_id);
-                    if let Some(index) = message_index {
-                        queue.write().await.remove(index);
-                    }
-                }
+                handle_ack(&ack_handlers, &queue).await;
             }
         });
     }
@@ -126,4 +99,45 @@ fn select_consumer_round_robin<'c>(
     let consumer = consumers.get_mut(last_index.load(std::sync::atomic::Ordering::Acquire));
     last_index.fetch_add(1, std::sync::atomic::Ordering::Release);
     consumer
+}
+
+async fn handle_ack(
+    ack_handlers: &Arc<RwLock<Vec<AckHandler>>>,
+    queue: &Arc<RwLock<VecDeque<Message>>>,
+) {
+    let mut ack_handlers = ack_handlers.write().await;
+    if ack_handlers.is_empty() {
+        return;
+    }
+    let ack_handlers = ack_handlers.iter_mut().map(|ack| ack.next());
+    let res = tokio::time::timeout(
+        Duration::from_millis(100),
+        futures::future::select_all(ack_handlers),
+    )
+    .await;
+    if let Ok((Some(Ok(ack)), idx, _)) = res {
+        tracing::info!("Received ack from consumer {}", idx);
+        let message_index = queue
+            .read()
+            .await
+            .iter()
+            .position(|msg| msg.id() == ack.message_id);
+        if let Some(index) = message_index {
+            queue.write().await.remove(index);
+        }
+    }
+}
+
+async fn handle_new_message(
+    message: Message,
+    last_consumer: Arc<AtomicUsize>,
+    queue: &Arc<RwLock<VecDeque<Message>>>,
+    consumers: &Arc<RwLock<Vec<ConsumerMessagehandler>>>,
+) {
+    queue.write().await.push_back(message.clone());
+    let mut consumers = consumers.write().await;
+    let consumer = select_consumer_round_robin(&mut consumers, last_consumer);
+    if let Some(consumer) = consumer {
+        consumer.send(message).await.unwrap();
+    }
 }
