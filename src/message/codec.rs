@@ -20,6 +20,12 @@ pub struct MessageCodec {
     length_delimited_codec: LengthDelimitedCodec,
 }
 
+impl Default for MessageCodec {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MessageCodec {
     pub fn new() -> Self {
         Self {
@@ -47,7 +53,7 @@ impl MessageCodec {
                 body,
             }))
         } else {
-            return Ok(None);
+            Ok(None)
         }
     }
 }
@@ -95,8 +101,8 @@ mod tests {
         let msg2 = client.next().await.unwrap().unwrap();
         let msg3 = client.next().await.unwrap().unwrap();
         assert!(client.next().await.is_none());
-        assert!(&msg1.body == b"1".as_slice());
-        assert!(&msg2.body == b"test".as_slice());
-        assert!(&msg3.body == [1, 2, 3].as_slice());
+        assert!(msg1.body == b"1".as_slice());
+        assert!(msg2.body == b"test".as_slice());
+        assert!(msg3.body == [1, 2, 3].as_slice());
     }
 }
